@@ -35,19 +35,12 @@ export default function Home() {
 
         {/* Main title */}
         <h1
-          className="text-5xl sm:text-7xl font-black leading-none tracking-tight"
+          className="text-5xl sm:text-7xl font-black leading-none tracking-tight text-black"
           style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}
         >
-          <span className="text-gold-shimmer">HACKER HOUSE</span>
+          <span>HACKER HOUSE</span>
           <br />
-          <span
-            className="text-5xl sm:text-6xl"
-            style={{
-              color: 'transparent',
-              WebkitTextStroke: '2px #c9962b',
-              textShadow: '0 4px 24px rgba(201,150,43,0.4)',
-            }}
-          >
+          <span className="text-5xl sm:text-6xl text-black">
             GOA 2026
           </span>
         </h1>
