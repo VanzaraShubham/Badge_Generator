@@ -5,35 +5,50 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  display: 'swap',
 });
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL || "https://hh-goa-badge.vercel.app";
-
+// Dynamic metadata - no hardcoded URLs
+// metadataBase is automatically inferred from request headers in production
 export const metadata: Metadata = {
-  title: "HH Goa 2026 – Builder ID Card Generator",
+  title: {
+    default: "HH Goa 2026 – Builder Badge Generator",
+    template: "%s | HH Goa 2026"
+  },
   description:
-    "Generate your official Hacker House Goa 2026 Builder ID Card in seconds. Upload your photo, enter your name & role, download and share on X. #FrameInGoa",
-  keywords: ["HH Goa", "Hacker House Goa", "2026", "Builder Badge", "FrameInGoa"],
+    "Generate your official Hacker House Goa 2026 Builder Badge in seconds. Upload your photo, customize your details, and share on X. #FrameInGoa",
+  keywords: [
+    "HH Goa", 
+    "Hacker House Goa", 
+    "2026", 
+    "Builder Badge", 
+    "FrameInGoa",
+    "Badge Generator",
+    "Profile Picture",
+    "Builder ID"
+  ],
+  authors: [{ name: "Hacker House Goa" }],
+  creator: "Hacker House Goa",
+  publisher: "Hacker House Goa",
   openGraph: {
-    title: "HH Goa 2026 – Builder ID Card Generator",
+    title: "HH Goa 2026 – Builder Badge Generator",
     description:
-      "Generate your official Hacker House Goa 2026 Builder ID Card. Upload your photo, get your badge, share on X! #FrameInGoa",
+      "Generate your official Hacker House Goa 2026 Builder Badge. Upload your photo, get your badge, share on X! #FrameInGoa",
     type: "website",
-    url: BASE_URL,
     siteName: "HH Goa 2026 Badge Generator",
     images: [
       {
-        url: `${BASE_URL}/og-image.png`,
+        url: "/og-image.png", // Relative URL - automatically resolved
         width: 1200,
         height: 630,
-        alt: "HH Goa 2026 – Builder ID Card Generator",
+        alt: "HH Goa 2026 – Builder Badge Generator",
         type: "image/png",
       },
     ],
@@ -41,13 +56,28 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "HH Goa 2026 – Builder ID Card Generator",
+    title: "HH Goa 2026 – Builder Badge Generator",
     description:
-      "Generate your official Hacker House Goa 2026 Builder ID Card and share on X! #FrameInGoa",
-    images: [`${BASE_URL}/og-image.png`],
+      "Generate your official Hacker House Goa 2026 Builder Badge and share on X! #FrameInGoa",
+    images: ["/og-image.png"], // Relative URL
+    creator: "@HackerHouseGoa",
   },
-  metadataBase: new URL(BASE_URL),
-  robots: { index: true, follow: true },
+  robots: { 
+    index: true, 
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

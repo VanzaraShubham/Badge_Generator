@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Download, RefreshCcw, Loader2 } from 'lucide-react';
+import { Download, RefreshCcw } from 'lucide-react';
 
 const XIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 15, height: 15, fill: 'currentColor', flexShrink: 0 }}>
@@ -22,63 +22,53 @@ const T = {
   green:     'var(--green-neon)',
 };
 
-interface Props { imageUrl: string; onReset: () => void; }
+interface Props { 
+  badgeUrl: string;
+  badgeId: string;
+  storage?: string;
+  onReset: () => void;
+}
 
-export const FramePreview: React.FC<Props> = ({ imageUrl, onReset }) => {
-  const [uploading, setUploading]     = useState(false);
-  const [cachedUrl, setCachedUrl]     = useState<string | null>(null);
-  const [shareError, setShareError]   = useState<string | null>(null);
+export const FramePreview: React.FC<Props> = ({ badgeUrl, badgeId, storage, onReset }) => {
+  const [shareError, setShareError] = useState<string | null>(null);
 
   /* Download */
   const handleDownload = () => {
     const a = document.createElement('a');
-    a.href = imageUrl;
+    a.href = badgeUrl;
     a.download = 'HH_Goa_2026_Badge.png';
+    a.target = '_blank'; // Open in new tab for external URLs
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   };
 
-  /* Share on X via /api/upload (Vercel Blob) */
+  /* Share on X - use the already uploaded badge */
   const handleShare = async () => {
     setShareError(null);
-    let badgeId = cachedUrl; // Reuse cached ID
 
-    if (!badgeId) {
-      setUploading(true);
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: imageUrl }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error((err as {error?: string}).error || `Upload error (${res.status})`);
-        }
-        const data = await res.json() as { id?: string; url?: string };
-        if (!data.id) throw new Error('No ID returned');
-        badgeId = data.id;
-        setCachedUrl(badgeId); // Cache the ID
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        setShareError(msg);
-        setUploading(false);
-        return;
+    try {
+      // Use dynamic origin detection - works in all environments
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      
+      // Construct share URL based on storage type
+      let sharePageUrl: string;
+      if (storage === 'freeimage-host') {
+        // For freeimage fallback, pass URL directly
+        sharePageUrl = `${origin}/share?url=${encodeURIComponent(badgeUrl)}`;
+      } else {
+        // For Vercel Blob, use ID-based URL
+        sharePageUrl = `${origin}/share?id=${badgeId}`;
       }
-      setUploading(false);
+
+      const tweet = encodeURIComponent(
+        `Just generated my HH Goa 2026 builder badge! 🏖️🚀\n\nGenerate yours 👇\n${sharePageUrl}\n\n#HackerHouseGoa #FrameInGoa`
+      );
+      window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank', 'noopener');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Share error';
+      setShareError(msg);
     }
-
-    // Always use the production domain for the share URL.
-    // ngrok / dev-tunnel URLs are NOT crawlable by X's card bot,
-    // so OG previews will always be blank when sharing from a tunnel.
-    const prodOrigin = process.env.NEXT_PUBLIC_BASE_URL || 'https://hh-goa-badge.vercel.app';
-    const sharePageUrl = `${prodOrigin}/share?id=${badgeId}`;
-
-    const tweet = encodeURIComponent(
-      `Just generated my HH Goa 2026 builder badge! 🏖️🚀\n\nGenerate yours 👇\n${sharePageUrl}\n\n#HackerHouseGoa #FrameInGoa`
-    );
-    window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank', 'noopener');
   };
 
   return (
@@ -105,7 +95,7 @@ export const FramePreview: React.FC<Props> = ({ imageUrl, onReset }) => {
         >
           <div style={{ position: 'relative', width: '100%', paddingBottom: '100%' }}>
             <Image
-              src={imageUrl}
+              src={badgeUrl}
               alt="Your HH Goa 2026 Builder Badge"
               fill
               className="object-contain"
@@ -133,16 +123,13 @@ export const FramePreview: React.FC<Props> = ({ imageUrl, onReset }) => {
               <button onClick={handleDownload} className="btn-secondary">
                 <Download size={14} /> Download PNG
               </button>
-              <button onClick={handleShare} disabled={uploading} className="btn-primary">
-                {uploading
-                  ? <><Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Uploading…</>
-                  : <><XIcon /> Share on X</>
-                }
+              <button onClick={handleShare} className="btn-primary">
+                <XIcon /> Share on X
               </button>
             </div>
 
             <p className="label-xs" style={{ color: T.muted, marginTop: 14, lineHeight: 1.6 }}>
-              Share on X uploads your badge and generates a link with a preview card.
+              Your badge is stored in the cloud. Share with a preview card on X!
             </p>
           </div>
 
