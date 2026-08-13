@@ -1,191 +1,202 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap');
 
-/* ===========================
-   FONTS & BASE VARIABLES
-=========================== */
+/* =============================================
+   HH GOA 2026 — DESIGN TOKENS
+   Inspired by hhgoa.com: dark forest + cream
+============================================= */
 :root {
-  --font-inter: 'Inter', sans-serif;
-  --font-playfair: 'Playfair Display', serif;
+  /* Backgrounds */
+  --bg:           #06100A;   /* deep forest black */
+  --bg-card:      #0D1C0F;   /* dark forest card */
+  --bg-surface:   #111E13;   /* slightly lighter surface */
+  --bg-input:     #080F0A;   /* input background */
 
-  /* Goa Coastal Color Palette */
-  --gold-light: #f5d483;
-  --gold: #c9962b;
-  --gold-dark: #8a6520;
-  --teal: #0e7c7b;
-  --ocean: #0369a1;
-  --sand: #f0e6d3;
-  --sand-dark: #d4b896;
-  --sunset-1: #f97316;
-  --sunset-2: #fbbf24;
-  --sunset-3: #ef4444;
-  --navy: #0f172a;
-  --cream: #fffbf5;
+  /* Borders */
+  --border:       #1C2E1E;
+  --border-mid:   #253027;
+  --border-hi:    #3A4E3C;
+
+  /* Text */
+  --text-cream:   #EAE0C0;   /* warm cream — primary text */
+  --text-dim:     #7C9A7A;   /* muted green-grey */
+  --text-muted:   #435744;   /* very muted */
+
+  /* Accents */
+  --pink:         #FF0080;
+  --pink-hover:   #CC0066;
+  --pink-glow:    rgba(255,0,128,0.28);
+  --pink-glow-sm: rgba(255,0,128,0.10);
+  --green-neon:   #39FF14;
+  --yellow:       #F5FF00;
 }
 
-/* ===========================
-   ANIMATIONS
-=========================== */
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
+/* =============================================
+   RESET
+============================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-14px);
-  }
-
-  100% {
-    transform: translateY(0px);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% center;
-  }
-
-  100% {
-    background-position: 200% center;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@theme inline {
-  --animate-blob: blob 7s infinite;
-  --animate-float: float 6s ease-in-out infinite;
-  --animate-shimmer: shimmer 3s linear infinite;
-  --animate-fade-in: fade-in 0.7s ease forwards;
-}
-
-/* ===========================
-   BODY — Warm Goa Sunset BG
-=========================== */
 body {
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
-  background: linear-gradient(160deg,
-      #f97316 0%,
-      #fbbf24 20%,
-      #fed7aa 40%,
-      #fde8c8 60%,
-      #e0f2fe 100%);
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text-cream);
   min-height: 100vh;
-  position: relative;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Blurred bokeh circles mimicking the blurred palm-tree background */
+/* =============================================
+   NOISE + GRID TEXTURE  (like hhgoa.com)
+============================================= */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse 600px 600px at 10% 20%, rgba(249, 115, 22, 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 500px 700px at 90% 10%, rgba(251, 191, 36, 0.25) 0%, transparent 70%),
-    radial-gradient(ellipse 700px 500px at 50% 100%, rgba(14, 124, 123, 0.15) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 400px at 80% 70%, rgba(14, 116, 144, 0.20) 0%, transparent 70%);
+  background-image:
+    radial-gradient(circle, rgba(57,255,20,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
   pointer-events: none;
   z-index: 0;
 }
 
-/* ===========================
-   GLASSMORPHISM UTILITIES
-=========================== */
-.glass {
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+/* Radial vignette overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(39,90,45,0.20) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.glass-dark {
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* =============================================
+   ANIMATIONS
+============================================= */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(57,255,20,0.25), 0 8px 40px rgba(57,255,20,0.08); }
+  50%       { box-shadow: 0 0 0 1px rgba(57,255,20,0.50), 0 8px 60px rgba(57,255,20,0.18); }
 }
 
-/* ===========================
-   GOLD SHIMMER TEXT
-=========================== */
-.text-gold-shimmer {
-  background: linear-gradient(90deg, #c9962b, #f5d483, #c9962b, #8a6520, #f5d483);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: shimmer 3s linear infinite;
+/* =============================================
+   TYPOGRAPHY UTILITIES
+============================================= */
+.label-xs {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.title-hero {
+  font-size: clamp(2.8rem, 9vw, 6rem);
+  font-weight: 800;
+  line-height: 0.86;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
 }
 
-/* ===========================
-   BLACK SHIMMER TEXT
-=========================== */
-.text-black-shimmer {
-  background: linear-gradient(90deg, #0f172a, #64748b, #0f172a, #1e293b, #64748b);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: shimmer 3s linear infinite;
+/* =============================================
+   DIVIDER LINE
+============================================= */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border-hi), transparent);
 }
 
-/* ===========================
-   GOLD BORDER CARD
-=========================== */
-.gold-card {
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  box-shadow:
-    0 0 0 2px rgba(201, 150, 43, 0.8),
-    0 0 0 4px rgba(245, 212, 131, 0.3),
-    0 25px 60px rgba(0, 0, 0, 0.3);
+/* =============================================
+   INPUTS — HH GOA STYLE
+============================================= */
+.hh-input {
+  display: block;
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-mid);
+  color: var(--text-cream);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 13px 14px;
+  outline: none;
+  border-radius: 0;
+  -webkit-appearance: none;
+  transition: border-color 0.14s, background 0.14s;
+}
+.hh-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.hh-input:focus {
+  border-color: var(--green-neon);
+  background: var(--bg-card);
 }
 
-/* ===========================
-   BLOB ANIMATION HELPER
-=========================== */
-.animate-blob {
-  animation: blob 7s infinite;
+/* =============================================
+   BUTTONS
+============================================= */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--pink);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.14s, box-shadow 0.14s, transform 0.1s;
 }
+.btn-primary:hover:not(:disabled) {
+  background: var(--pink-hover);
+  box-shadow: 0 0 36px var(--pink-glow);
+}
+.btn-primary:active:not(:disabled) { transform: scale(0.982); }
+.btn-primary:disabled { opacity: 0.40; cursor: not-allowed; }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 24px;
+  background: transparent;
+  color: var(--text-cream);
+  border: 1px solid var(--border-mid);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: border-color 0.14s, color 0.14s, transform 0.1s;
 }
-
-.animation-delay-2 {
-  animation-delay: 2s;
+.btn-secondary:hover {
+  border-color: var(--border-hi);
+  color: #fff;
 }
-
-.animation-delay-4 {
-  animation-delay: 4s;
-}
+.btn-secondary:active { transform: scale(0.982); }

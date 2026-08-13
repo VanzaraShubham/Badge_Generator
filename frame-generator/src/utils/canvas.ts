@@ -3,195 +3,184 @@ import { FrameData } from '../components/UploadArea';
 /* ─────────────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────────────── */
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
 function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const im = new Image();
-    im.crossOrigin = 'anonymous';
-    im.onload = () => resolve(im);
-    im.onerror = () => reject(new Error(`Failed to load: ${src}`));
-    im.src = src;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${src}`));
+    img.src = src;
   });
 }
 
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number, y: number,
+  maxW: number,
+  basePx: number,
+  font: string,
+  weight = 'bold'
+) {
+  let s = basePx;
+  ctx.font = `${weight} ${s}px ${font}`;
+  while (ctx.measureText(text).width > maxW && s > 7) {
+    s -= 1;
+    ctx.font = `${weight} ${s}px ${font}`;
+  }
+  ctx.fillText(text, x, y);
+}
+
 /* ─────────────────────────────────────────────────────────────────
-   COORDINATE MAP  (in 1024×1024 source template space)
-   
-   The generated template has:
-     - Rainbow lanyard at top
-     - Gold hook in center-top
-     - Card body:    roughly x=245, y=310, w=535, h=680
-     - Photo slot:   roughly x=370, y=460, w=265, h=280
-     - Text region:  y=755 → y=960  (Name / Builder Title / Role)
+   EXACT PIXEL COORDINATE MAP (1024x1024 Template)
+   Calculated by scanning the template image.
 ───────────────────────────────────────────────────────────────── */
-
 const MAP = {
-  // Photo slot (inner grey area inside the teal frame)
-  photo: { x: 412, y: 490, w: 200, h: 250, r: 8 },
+  oval: {
+    cxR: 0.500,  // X=512
+    cyR: 0.464,  // Y=475
+    rxR: 0.127,  // Radius X=130
+    ryR: 0.161,  // Radius Y=165
+  },
+  nameBar: {
+    // Green binary pattern bar (top, "111" pattern)
+    xR:  0.500,  // Center X
+    yR:  0.712,  // Y position of green bar center (moved down significantly)
+    wR:  0.361,  // Width=370
+    hR:  0.039,  // Height=40
+  },
+  titleBar: {
+    // Red bar (middle)
+    xR:  0.500,  // Center X
+    yR:  0.775,  // Y position of red bar center (moved down significantly)
+    wR:  0.361,  // Width=370
+    hR:  0.039,  // Height=40
+  },
+  roleBar: {
+    // Cream bar (bottom)
+    xR:  0.500,  // Center X
+    yR:  0.838,  // Y position of cream bar center (moved down significantly)
+    wR:  0.361,  // Width=370
+    hR:  0.039,  // Height=40
+  },
+  footer: {
+    xR:  0.100,
+    yR:  0.920,  // Bottom cream area
+    wR:  0.800,
+    hR:  0.030,
+  },
+} as const;
 
-  // Text region we repaint over (Name / Builder Title / Role area)
-  textBlock: { x: 302, y: 755, w: 420, h: 175 },
-
-  // Card bounds (for reference — the gold-bordered card)
-  card: { x: 292, y: 340, w: 440, h: 620 },
-};
+function randomBuilderNum() {
+  return String(Math.floor(Math.random() * 900) + 100);
+}
 
 /* ─────────────────────────────────────────────────────────────────
    MAIN EXPORT
-   Only 3 fields: Name, Builder Title, Role — no extra info.
-   Output at 2× for crisp text (2048×2048)
 ───────────────────────────────────────────────────────────────── */
-
 export const generateFrame = async (data: FrameData): Promise<string> => {
-  const [templateImg, userImg] = await Promise.all([
-    loadImg('/id_card_template.png'),
+  const builderNum = randomBuilderNum();
+
+  const [frameImg, userImg] = await Promise.all([
+    loadImg('/hh_frame.jpg'),
     loadImg(data.imageSrc),
   ]);
 
-  const S = 2;
-  const TW = templateImg.width * S;
-  const TH = templateImg.height * S;
+  const S  = 2; // Supersample for crisp text
+  const TW = frameImg.width  * S;
+  const TH = frameImg.height * S;
 
   const canvas = document.createElement('canvas');
-  canvas.width = TW;
+  canvas.width  = TW;
   canvas.height = TH;
   const ctx = canvas.getContext('2d')!;
-  if (!ctx) throw new Error('No canvas context');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-  /* ── 1. Draw full template at 2× ─────────────────────────── */
-  ctx.drawImage(templateImg, 0, 0, TW, TH);
+  // Resolved pixel coords
+  const cx = MAP.oval.cxR * TW;
+  const cy = MAP.oval.cyR * TH;
+  const rx = MAP.oval.rxR * TW;
+  const ry = MAP.oval.ryR * TH;
 
-  /* ── 1.5. Patch the ghost hook artifact in the template ── */
+  /* ════════════════════════════════════════════════════════════
+     STEP 1 — Draw the user's photo FIRST, filling the oval
+  ════════════════════════════════════════════════════════════ */
   ctx.save();
-  ctx.filter = `blur(${8 * S}px)`;
-  ctx.fillStyle = '#fcd979'; // warm sunset sky color
   ctx.beginPath();
-  // The artifact is just below the golden hook in the sky
-  ctx.ellipse(512 * S, 395 * S, 40 * S, 25 * S, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  /* ── 2. Draw user photo into the photo slot ─────────────── */
-  const p = MAP.photo;
-  const px = p.x * S, py = p.y * S, pw = p.w * S, ph = p.h * S, pr = p.r * S;
-
-  ctx.save();
-  roundRect(ctx, px, py, pw, ph, pr);
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
   ctx.clip();
 
-  // Object-fit: cover
-  const uScale = Math.max(pw / userImg.width, ph / userImg.height);
-  const uw = userImg.width * uScale;
-  const uh = userImg.height * uScale;
-  ctx.drawImage(userImg, px + (pw - uw) / 2, py + (ph - uh) / 2, uw, uh);
+  // Draw user image scaled to "cover" the oval
+  const scale = Math.max((rx * 2) / userImg.width, (ry * 2) / userImg.height);
+  const uw = userImg.width  * scale;
+  const uh = userImg.height * scale;
+  ctx.drawImage(userImg, cx - uw / 2, cy - uh / 2, uw, uh);
   ctx.restore();
 
-  /* ── 3. Repaint text region with card background ───────── */
-  const tb = MAP.textBlock;
-  const tbx = tb.x * S, tby = tb.y * S, tbw = tb.w * S, tbh = tb.h * S;
+  /* ════════════════════════════════════════════════════════════
+     STEP 2 — Draw the template with an EVEN-ODD hole!
+     This draws the template everywhere EXCEPT inside the oval,
+     meaning the gold decorative rings will sit perfectly on top
+     of the user's photo edges.
+  ════════════════════════════════════════════════════════════ */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, TW, TH);                           // Full canvas
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);   // Subtract oval hole
+  ctx.clip('evenodd');
+  ctx.drawImage(frameImg, 0, 0, TW, TH);
+  ctx.restore();
 
-  // Sandy pearl gradient matching card bg
-  const sandGrad = ctx.createLinearGradient(0, tby, 0, tby + tbh);
-  sandGrad.addColorStop(0.0, '#f5eed8');
-  sandGrad.addColorStop(0.5, '#f0e8cf');
-  sandGrad.addColorStop(1.0, '#ece0c2');
-  ctx.fillStyle = sandGrad;
-  ctx.fillRect(tbx, tby, tbw, tbh);
+  /* ════════════════════════════════════════════════════════════
+     STEP 3 — NAME on green binary bar (top, already in template)
+  ════════════════════════════════════════════════════════════ */
+  const {xR: nXR, yR: nYR, wR: nWR, hR: nHR} = MAP.nameBar;
+  const ncx = nXR * TW, ncy = nYR * TH, nw = nWR * TW, nh = nHR * TH;
 
-  /* ── 4. Draw the 3 text fields ─────────────────────────── */
-  const cx = TW / 2;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  fitText(ctx, data.name.toUpperCase(), ncx, ncy, nw * 0.90, Math.round(nh * 0.60), '"Arial Black", Arial, sans-serif');
 
-  const labelFont = (size: number) => `bold ${size * S}px "Georgia", serif`;
-  const valueFont = (size: number) => `bold ${size * S}px "Georgia", serif`;
-  const labelCol = '#6b5a40';
-  const valueCol = '#0f172a';
-  const lineCol = 'rgba(15,23,42,0.35)';
+  /* ════════════════════════════════════════════════════════════
+     STEP 4 — BUILDER TITLE on red bar (middle, already in template)
+  ════════════════════════════════════════════════════════════ */
+  const {xR: tXR, yR: tYR, wR: tWR, hR: tHR} = MAP.titleBar;
+  const tcx = tXR * TW, tcy = tYR * TH, tw = tWR * TW, th = tHR * TH;
 
-  let y = tby + 45 * S;
-  // Shift labels to the left to make room for long input values
-  const labelX = cx - 50 * S;
-  const valueX = cx - 35 * S;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const titleText = data.title && data.title.trim() !== '' ? data.title.toUpperCase() : 'BUILDER';
+  fitText(ctx, titleText, tcx, tcy, tw * 0.90, Math.round(th * 0.60), '"Arial Black", Arial, sans-serif');
 
-  // ── Name ──
-  ctx.textAlign = 'right';
-  ctx.font = labelFont(18);
-  ctx.fillStyle = labelCol;
-  ctx.fillText('Name:', labelX, y);
+  /* ════════════════════════════════════════════════════════════
+     STEP 5 — ROLE on cream bar (bottom, already in template)
+  ════════════════════════════════════════════════════════════ */
+  const {xR: rXR, yR: rYR, wR: rWR, hR: rHR} = MAP.roleBar;
+  const rcx = rXR * TW, rcy = rYR * TH, rw = rWR * TW, rh = rHR * TH;
 
-  ctx.textAlign = 'left';
-  ctx.font = valueFont(28);
-  ctx.fillStyle = valueCol;
-  ctx.fillText(data.name, valueX, y);
+  ctx.fillStyle = '#1B3A00';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  fitText(ctx, data.role.toUpperCase(), rcx, rcy, rw * 0.90, Math.round(rh * 0.60), '"Arial Black", Arial, sans-serif');
 
-  // Underline
-  const nm = ctx.measureText(data.name);
-  const lineW = Math.max(nm.width + 10 * S, 180 * S);
-  ctx.strokeStyle = lineCol;
-  ctx.lineWidth = 1.5 * S;
-  ctx.beginPath();
-  ctx.moveTo(valueX, y + 20 * S);
-  ctx.lineTo(valueX + lineW, y + 20 * S);
-  ctx.stroke();
+  /* ════════════════════════════════════════════════════════════
+     STEP 6 — Personalised Builder ID in footer
+  ════════════════════════════════════════════════════════════ */
+  const {xR: fXR, yR: fYR, wR: fWR, hR: fHR} = MAP.footer;
+  const fBx = fXR * TW, fBy = fYR * TH, fBw = fWR * TW, fBh = fHR * TH;
 
-  // ── Builder Title ──
-  y += 50 * S;
-  ctx.textAlign = 'right';
-  ctx.font = labelFont(18);
-  ctx.fillStyle = labelCol;
-  ctx.fillText('Builder Title:', labelX, y);
+  // Repaint footer background (over the existing BUILDER ID)
+  ctx.fillStyle = '#F4ECD8';
+  ctx.fillRect(fBx, fBy - fBh / 2, fBw, fBh);
 
-  ctx.textAlign = 'left';
-  ctx.font = valueFont(24);
-  ctx.fillStyle = '#1e3a5f';
-  ctx.fillText(data.title, valueX, y);
-
-  // Underline
-  const tm = ctx.measureText(data.title);
-  const tLineW = Math.max(tm.width + 10 * S, 180 * S);
-  ctx.strokeStyle = lineCol;
-  ctx.beginPath();
-  ctx.moveTo(valueX, y + 18 * S);
-  ctx.lineTo(valueX + tLineW, y + 18 * S);
-  ctx.stroke();
-
-  // ── Role ──
-  y += 50 * S;
-  ctx.textAlign = 'right';
-  ctx.font = labelFont(18);
-  ctx.fillStyle = labelCol;
-  ctx.fillText('Role:', labelX, y);
-
-  ctx.textAlign = 'left';
-  ctx.font = `bold ${24 * S}px "Arial Black", "Arial", sans-serif`;
-  ctx.fillStyle = '#1e3a5f';
-  ctx.fillText(data.role, valueX, y);
-
-  // Underline
-  const rm = ctx.measureText(data.role);
-  const rLineW = Math.max(rm.width + 10 * S, 180 * S);
-  ctx.strokeStyle = lineCol;
-  ctx.beginPath();
-  ctx.moveTo(valueX, y + 18 * S);
-  ctx.lineTo(valueX + rLineW, y + 18 * S);
-  ctx.stroke();
+  // Personalised ID text
+  const idText = `BUILDER ID: HHG-${builderNum}-2026  ·  28–31 OCT 2026`;
+  ctx.fillStyle = '#2D4C1E';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  fitText(ctx, idText, TW / 2, fBy, fBw * 0.88, Math.round(16 * S), '"Arial Black", Arial, sans-serif', 'bold');
 
   return canvas.toDataURL('image/png', 1.0);
 };
